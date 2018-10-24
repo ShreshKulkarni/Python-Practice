@@ -9,6 +9,7 @@ import pp
 import time
 import pandas as pd
 
+#function to join the text from to columns
 def test_func(df):
     x = []
     text=''
@@ -21,10 +22,8 @@ def test_func(df):
         x.append(text)
     return x
 
-ppservers = ()
-job_server = pp.Server(ppservers=ppservers)
-print ("Starting pp with %d workers" %( job_server.get_ncpus()))
 
+#Initial data processing
 data = pd.read_csv("../data/cleaned_data_w_translations.csv")
 data.shape
 
@@ -35,16 +34,24 @@ data['Subject_emoji_desc'].fillna('SUB_NA',inplace=True)
 
 data.drop(data[data['Translated Subject'].isnull() & data['Translated Body'].isnull() \
       &(data.Body.isnull()) & (data.Subject.isnull()) ].index,axis=0,inplace=True)
-data.shape
-"""
+
+#serial processing time for benchmarking
 print(time.time())
 ll = test_func(data[60000:120000])
 print(time.time())
-"""
+
+#parallel processing code with pp
+ppservers = () #this is mainly used in clustered env and names of the nodes are given here.
+                #used here for demonstration purposes only
+job_server = pp.Server(ncpus =5,ppservers=ppservers) #start the job with 5 workers
+print ("Starting pp with %d workers" %( job_server.get_ncpus()))
 start_time = time.time()
 x_all = []
+#input load division
 inputs = (data[0:60000],data[60000:120000],data[120000:180000],data[180000:240000],data[240000:300000],data[300000:360000],data[360000:len(data)])
+#job submission
 jobs = [(input_x,job_server.submit(test_func,(input_x,),(None,),("pandas",))) for input_x in inputs]
+#result accumulation
 for input_x,job in jobs:
     x_all.append(job())
 len(x_all)
